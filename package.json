@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/KumarShrey05/vopzi/issues"
   },
-  "homepage": "https://github.com/KumarShrey05/vopzi#readme"
+  "homepage": "https://github.com/KumarShrey05/vopzi#readme",
+  "devDependencies": {
+    "daisyui": "^4.12.24"
+  }
 }
