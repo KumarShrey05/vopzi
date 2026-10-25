@@ -1,5 +1,6 @@
 import cloudinary from "../lib/cloudinary.js";
-import Message from "../models/message.js";
+import { getReceiverSocketId, io } from "../lib/socket.js";
+import Message from "../models/Message.js";
 import User from "../models/user.model.js";
 
 export const getAllContacts = async (req, res) => {
@@ -20,10 +21,11 @@ export const getMessagesByUserId = async (req, res) => {
   try {
     const myId = req.user._id;
     const { id: userToChatId } = req.params;
+
     const messages = await Message.find({
       $or: [
-        { senderId: myId, receiverId: userToChatId }, // I am the sender
-        { senderId: userToChatId, receiverId: myId }, // I am the receiver
+        { senderId: myId, receiverId: userToChatId },
+        { senderId: userToChatId, receiverId: myId },
       ],
     });
 
@@ -43,8 +45,6 @@ export const sendMessage = async (req, res) => {
     if (!text && !image) {
       return res.status(400).json({ message: "Text or image is required." });
     }
-    
-    //Can't send to yourself
     if (senderId.equals(receiverId)) {
       return res
         .status(400)
@@ -71,6 +71,11 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
+
     res.status(201).json(newMessage);
   } catch (error) {
     console.log("Error in sendMessage controller: ", error.message);
@@ -81,7 +86,8 @@ export const sendMessage = async (req, res) => {
 export const getChatPartners = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    //find all the messages where the logged-in user either sender or receiver.
+
+    // find all the messages where the logged-in user is either sender or receiver
     const messages = await Message.find({
       $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
     });
